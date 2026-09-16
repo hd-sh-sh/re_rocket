@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>재사용 로켓 착륙 챌린지</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0d18;
+    --panel:#121729;
+    --panel-2:#1b2237;
+    --ink:#e8ecf8;
+    --ink-dim:#94a0c0;
+    --line:#2a3350;
+    --accent:#5ee2c6;
+    --accent-2:#ffb347;
+    --danger:#ff6b6b;
+    --ok:#4ade80;
+  }
+  :root:not([data-theme="light"]){ color-scheme: dark; }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){
+      --bg:#eef1f8; --panel:#ffffff; --panel-2:#f3f5fb;
+      --ink:#151a2b; --ink-dim:#5b6480; --line:#d9deec;
+      color-scheme: light;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0a0d18; --panel:#121729; --panel-2:#1b2237;
+    --ink:#e8ecf8; --ink-dim:#94a0c0; --line:#2a3350;
+    color-scheme: dark;
+  }
+
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:"Noto Sans KR", system-ui, -apple-system, "Segoe UI", sans-serif;
+    display:flex; flex-direction:column; align-items:center;
+    min-height:100dvh; padding:10px 10px 16px; gap:10px;
+    overscroll-behavior:none;
+  }
+  .wrap{ width:100%; max-width:420px; display:flex; flex-direction:column; gap:10px; }
+
+  header{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+  h1{
+    font-family:"Orbitron", sans-serif; font-weight:800;
+    font-size:clamp(15px,4.4vw,19px); margin:0; letter-spacing:.02em;
+  }
+  .tagline{ font-size:11px; color:var(--ink-dim); white-space:nowrap; }
+
+  .hud{
+    display:grid; grid-template-columns:repeat(3,1fr); gap:6px;
+    background:var(--panel); border:1px solid var(--line);
+    border-radius:12px; padding:8px;
+  }
+  .cell{ text-align:center; }
+  .cell .k{ font-size:10px; color:var(--ink-dim); letter-spacing:.08em; }
+  .cell .v{ font-family:"Orbitron",sans-serif; font-weight:600; font-size:17px; margin-top:2px; }
+  .v.warn{ color:var(--accent-2); }
+  .v.bad{ color:var(--danger); }
+
+  .fuelbar{ height:5px; border-radius:99px; background:var(--panel-2); overflow:hidden; margin-top:5px; }
+  .fuelbar>i{ display:block; height:100%; width:100%; background:var(--accent); transition:width .08s linear; }
+
+  .stage{ position:relative; border-radius:14px; overflow:hidden; border:1px solid var(--line); background:#05070f; }
+  canvas{ display:block; width:100%; height:auto; touch-action:none; }
+
+  .overlay{
+    position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:10px; padding:20px;
+    background:rgba(5,7,15,.82); backdrop-filter:blur(3px); text-align:center;
+  }
+  .overlay.hidden{ display:none; }
+  .otitle{ font-family:"Orbitron",sans-serif; font-weight:800; font-size:22px; color:#fff; }
+  .otitle.ok{ color:var(--ok); }
+  .otitle.bad{ color:var(--danger); }
+  .odesc{ font-size:13px; color:#b8c2dc; line-height:1.65; max-width:290px; }
+  .odesc b{ color:#fff; }
+
+  button{
+    font-family:inherit; font-weight:700; cursor:pointer;
+    border:1px solid var(--line); border-radius:11px;
+    background:var(--panel-2); color:var(--ink);
+    padding:11px 18px; font-size:14px;
+  }
+  button:active{ transform:translateY(1px); }
+  .primary{ background:var(--accent); color:#06231d; border-color:transparent; }
+  .ghost{ background:transparent; color:var(--ink-dim); font-size:12px; padding:7px 12px; }
+
+  .controls{ display:grid; grid-template-columns:1fr 2fr 1fr; gap:8px; }
+  .arrow{ font-size:22px; padding:0; height:62px; background:var(--panel); }
+  .arrow.off{ display:none; }
+  .thrust{
+    height:62px; font-size:16px; background:linear-gradient(180deg,var(--accent-2),#e08b1f);
+    color:#2b1600; border-color:transparent; letter-spacing:.02em;
+  }
+  .controls.tiltmode{ grid-template-columns:1fr; }
+  .thrust:active{ filter:brightness(1.12); }
+
+  .row{ display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+  .chips{ display:flex; gap:6px; }
+  .chip{
+    font-size:11px; padding:6px 11px; border-radius:99px;
+    border:1px solid var(--line); background:var(--panel); color:var(--ink-dim);
+  }
+  .chip.on{ background:var(--accent); color:#06231d; border-color:transparent; font-weight:700; }
+  .stat{ font-size:11px; color:var(--ink-dim); }
+
+  .note{
+    font-size:11px; color:var(--ink-dim); line-height:1.7;
+    background:var(--panel); border:1px solid var(--line);
+    border-radius:11px; padding:10px 12px;
+  }
+  .note b{ color:var(--ink); }
+  .sensor-msg{ font-size:11px; color:var(--accent-2); min-height:15px; text-align:center; }
+
+  .diag{
+    background:var(--panel); border:1px solid var(--line);
+    border-radius:11px; padding:10px 12px; font-size:11px; line-height:1.9;
+  }
+  .diag summary{ cursor:pointer; color:var(--ink); font-weight:700; font-size:12px; }
+  .diag table{ width:100%; border-collapse:collapse; margin-top:8px; }
+  .diag td{ padding:2px 0; vertical-align:top; }
+  .diag td:first-child{ color:var(--ink-dim); width:46%; }
+  .diag td:last-child{ font-family:ui-monospace,Menlo,Consolas,monospace; }
+  .yes{ color:var(--ok); } .no{ color:var(--danger); } .mid{ color:var(--accent-2); }
+  .verdict{
+    margin-top:9px; padding:8px 10px; border-radius:8px;
+    background:var(--panel-2); color:var(--ink); line-height:1.7;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>🚀 로켓 착륙 챌린지</h1>
+    <span class="tagline">부스터를 무사히 회수하라</span>
+  </header>
+
+  <div class="hud">
+    <div class="cell"><div class="k">속도</div><div class="v" id="spd">0</div></div>
+    <div class="cell">
+      <div class="k">연료</div><div class="v" id="fuel">100</div>
+      <div class="fuelbar"><i id="fbar"></i></div>
+    </div>
+    <div class="cell"><div class="k">바람</div><div class="v" id="wind">—</div></div>
+  </div>
+
+  <div class="stage">
+    <canvas id="cv" width="360" height="560"></canvas>
+    <div class="overlay" id="ov">
+      <div class="otitle" id="otitle">착륙 준비</div>
+      <div class="odesc" id="odesc">
+        화면을 좌우로 <b>드래그</b>해 위치를 맞추고,<br>
+        <b>역추진</b>을 눌러 속도를 줄이세요.<br>
+        속도 <b>18 미만</b>으로 착륙장에 닿으면 성공!
+      </div>
+      <button class="primary" id="startBtn">시작하기</button>
+      <button class="ghost" id="tiltBtn">기울기 센서 켜기</button>
+      <div class="sensor-msg" id="smsg"></div>
+    </div>
+  </div>
+
+  <div class="controls" id="ctrls">
+    <button class="arrow" id="lbtn">◀</button>
+    <button class="thrust" id="tbtn">🔥 역추진</button>
+    <button class="arrow" id="rbtn">▶</button>
+  </div>
+
+  <div class="row">
+    <div class="chips">
+      <button class="chip on" data-lv="0">쉬움</button>
+      <button class="chip" data-lv="1">보통</button>
+      <button class="chip" data-lv="2">어려움</button>
+    </div>
+    <div class="stat" id="stat">시도 0 · 성공 0</div>
+  </div>
+
+  <div class="note" id="note">
+    <b>조작</b> · 기기 기울이기 / 화면을 좌우로 드래그 / ← → 키 · 역추진은 <b>누르고 있는 동안</b> 작동(스페이스바)<br>
+    <b>기울기 센서</b>가 안 잡히면 위 버튼들과 드래그로 그대로 플레이할 수 있어요.
+  </div>
+
+  <details class="diag" id="diag" open>
+    <summary>🔍 센서 진단</summary>
+    <table>
+      <tr><td>HTTPS(보안 연결)</td><td id="d-sec">—</td></tr>
+      <tr><td>iframe 안에서 실행</td><td id="d-frame">—</td></tr>
+      <tr><td>gyroscope 권한정책</td><td id="d-policy">—</td></tr>
+      <tr><td>DeviceOrientationEvent</td><td id="d-doe">—</td></tr>
+      <tr><td>권한 요청 필요(iOS)</td><td id="d-perm">—</td></tr>
+      <tr><td>orientation 수신</td><td id="d-cnt">0회</td></tr>
+      <tr><td>motion 수신</td><td id="d-mcnt">0회</td></tr>
+      <tr><td>gamma / beta</td><td id="d-val">— / —</td></tr>
+      <tr><td>사용 중인 조종</td><td id="d-src">버튼·드래그</td></tr>
+    </table>
+    <div class="verdict" id="d-verdict">버튼을 눌러 센서를 켠 뒤 기기를 좌우로 기울여 보세요.</div>
+    <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
+      <button class="ghost" id="retryBtn" style="border:1px solid var(--line);">센서 다시 시도</button>
+      <button class="ghost" id="openBtn" style="border:1px solid var(--line);">새 탭에서 열기</button>
+    </div>
+  </details>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var cv = document.getElementById('cv');
+  var ctx = cv.getContext('2d');
+  var W = cv.width, H = cv.height;
+
+  var LEVELS = [
+    { name:'쉬움',   g:0.013, safe:2.2, fuel:130, wind:0.20, padW:110, thrust:0.055 },
+    { name:'보통',   g:0.017, safe:1.8, fuel:100, wind:0.35, padW:84,  thrust:0.050 },
+    { name:'어려움', g:0.022, safe:1.4, fuel:78,  wind:0.55, padW:62,  thrust:0.048 }
+  ];
+  var lv = 0;
+  var GROUND = H - 26;
+
+  var S = {
+    running:false, over:false,
+    x:0, y:0, vy:0, fuel:0, wind:0, thrusting:false,
+    keyDir:0, btnDir:0, dragX:null, tilt:0,
+    particles:[], stars:[], shake:0
+  };
+  var tries = 0, wins = 0;
+
+  /* ---------- 배경 별 ---------- */
+  for (var i=0;i<70;i++){
+    S.stars.push({ x:Math.random()*W, y:Math.random()*(GROUND-20), r:Math.random()*1.3+0.3, a:Math.random()*0.6+0.25 });
+  }
+
+  /* ---------- 저장된 기록 ---------- */
+  try {
+    var raw = localStorage.getItem('rocket_stats_v1');
+    if (raw){ var o = JSON.parse(raw); tries = o.t||0; wins = o.w||0; }
+  } catch(e){}
+  function saveStats(){
+    try { localStorage.setItem('rocket_stats_v1', JSON.stringify({t:tries,w:wins})); } catch(e){}
+    document.getElementById('stat').textContent = '시도 ' + tries + ' · 성공 ' + wins;
+  }
+  saveStats();
+
+  /* ---------- 게임 시작 ---------- */
+  var pad = { x:0, w:0 };
+
+  function reset(){
+    var L = LEVELS[lv];
+    pad.w = L.padW;
+    pad.x = 18 + Math.random()*(W - 36 - pad.w);
+    S.x = 40 + Math.random()*(W-80);
+    S.y = 34;
+    S.vy = 0;
+    S.fuel = L.fuel;
+    var dirs = [-1,-0.5,0,0.5,1];
+    S.wind = dirs[Math.floor(Math.random()*dirs.length)] * L.wind;
+    S.thrusting = false;
+    S.over = false;
+    S.particles = [];
+    S.shake = 0;
+    updateHUD();
+  }
+
+  function start(){
+    reset();
+    S.running = true;
+    document.getElementById('ov').classList.add('hidden');
+  }
+
+  function finish(ok, msg){
+    S.running = false;
+    S.over = true;
+    tries++; if (ok) wins++;
+    saveStats();
+    var ov = document.getElementById('ov');
+    var t = document.getElementById('otitle');
+    t.textContent = ok ? '🎉 착륙 성공!' : '💥 착륙 실패';
+    t.className = 'otitle ' + (ok ? 'ok' : 'bad');
+    document.getElementById('odesc').innerHTML = msg;
+    document.getElementById('startBtn').textContent = '다시 도전';
+    ov.classList.remove('hidden');
+  }
+
+  /* ---------- 파티클 ---------- */
+  function flame(){
+    S.particles.push({
+      x:S.x + (Math.random()*10-5), y:S.y+28,
+      vx:(Math.random()-0.5)*1.1, vy:Math.random()*2.4+1.1,
+      life:1, r:Math.random()*3.2+1.6, type:'f'
+    });
+  }
+  function boom(){
+    for (var i=0;i<46;i++){
+      var a = Math.random()*Math.PI*2, sp = Math.random()*4.2+0.8;
+      S.particles.push({
+        x:S.x, y:S.y+18, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-1,
+        life:1, r:Math.random()*4.5+1.5, type:'b'
+      });
+    }
+    S.shake = 16;
+  }
+
+  /* ---------- 루프 ---------- */
+  var last = performance.now();
+
+  function step(now){
+    var dt = Math.min((now-last)/16.667, 2.6);
+    last = now;
+
+    if (S.running){
+      var L = LEVELS[lv];
+
+      // 수직: 중력 + 역추진
+      S.vy += L.g * dt;
+      if (S.thrusting && S.fuel > 0){
+        S.vy -= L.thrust * dt;
+        S.fuel -= 0.55 * dt;
+        if (S.fuel < 0) S.fuel = 0;
+        flame(); if (dt > 1.2) flame();
+      }
+      S.y += S.vy * dt;
+
+      // 수평: 기울기 + 버튼/키 + 바람
+      var move = 0;
+      if (S.dragX !== null){
+        move = (S.dragX - S.x) * 0.30;
+        if (move > 6.5) move = 6.5; if (move < -6.5) move = -6.5;
+      } else {
+        move = S.tilt / 7 + (S.keyDir + S.btnDir) * 2.1;
+      }
+      S.x += (move + S.wind) * dt;
+      if (S.x < 15) S.x = 15;
+      if (S.x > W-15) S.x = W-15;
+
+      // 착륙 판정
+      var bottom = S.y + 30;
+      if (bottom >= GROUND){
+        S.y = GROUND - 30;
+        var onPad = (S.x > pad.x - 4) && (S.x < pad.x + pad.w + 4);
+        var v = Math.round(S.vy * 10);
+        if (onPad && S.vy < L.safe){
+          finish(true,
+            '착륙 속도 <b>' + v + '</b> · 남은 연료 <b>' + Math.round(S.fuel) + '</b><br>' +
+            '부스터를 다시 쓸 수 있게 됐어요.');
+        } else if (onPad){
+          boom();
+          finish(false,
+            '착륙 속도 <b>' + v + '</b> — 안전 기준은 ' + Math.round(L.safe*10) + ' 미만이에요.<br>' +
+            '역추진을 조금 더 일찍 눌러 보세요.');
+        } else {
+          boom();
+          finish(false,
+            '착륙장을 <b>벗어났어요</b>.<br>바람 방향을 미리 보고 반대로 기울여 보세요.');
+        }
+      }
+    }
+
+    // 파티클 갱신
+    for (var i=S.particles.length-1;i>=0;i--){
+      var p = S.particles[i];
+      p.x += p.vx*dt; p.y += p.vy*dt;
+      if (p.type==='b') p.vy += 0.09*dt;
+      p.life -= (p.type==='f' ? 0.055 : 0.021) * dt;
+      if (p.life <= 0) S.particles.splice(i,1);
+    }
+    if (S.shake > 0) S.shake -= dt;
+
+    draw();
+    if (S.running) updateHUD();
+    requestAnimationFrame(step);
+  }
+
+  /* ---------- 그리기 ---------- */
+  function draw(){
+    ctx.save();
+    if (S.shake > 0){
+      ctx.translate((Math.random()-0.5)*S.shake*0.6, (Math.random()-0.5)*S.shake*0.6);
+    }
+
+    // 하늘
+    var sky = ctx.createLinearGradient(0,0,0,H);
+    sky.addColorStop(0,'#05070f');
+    sky.addColorStop(0.62,'#0b1224');
+    sky.addColorStop(1,'#16203a');
+    ctx.fillStyle = sky; ctx.fillRect(-20,-20,W+40,H+40);
+
+    // 별
+    for (var i=0;i<S.stars.length;i++){
+      var s = S.stars[i];
+      ctx.globalAlpha = s.a; ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.3); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // 지면
+    ctx.fillStyle = '#242f4d';
+    ctx.fillRect(0, GROUND, W, H-GROUND);
+    ctx.fillStyle = '#2f3c61';
+    ctx.fillRect(0, GROUND, W, 3);
+
+    // 착륙장
+    var grad = ctx.createLinearGradient(pad.x,0,pad.x+pad.w,0);
+    grad.addColorStop(0,'#3ddcb8'); grad.addColorStop(1,'#2aa98e');
+    ctx.fillStyle = grad;
+    ctx.fillRect(pad.x, GROUND-7, pad.w, 7);
+    ctx.fillStyle = 'rgba(94,226,198,.18)';
+    ctx.fillRect(pad.x, GROUND-58, pad.w, 51);
+    for (var k=0;k<3;k++){
+      ctx.fillStyle = 'rgba(255,255,255,.55)';
+      ctx.fillRect(pad.x + pad.w*(k+1)/4 - 1, GROUND-13, 2, 5);
+    }
+
+    // 파티클
+    for (var j=0;j<S.particles.length;j++){
+      var p = S.particles[j];
+      ctx.globalAlpha = Math.max(p.life,0);
+      ctx.fillStyle = (p.type==='f')
+        ? (p.life>0.6 ? '#fff3c4' : (p.life>0.32 ? '#ffb347' : '#ff6b3d'))
+        : (p.life>0.5 ? '#ffd166' : '#ff5a4a');
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r*Math.max(p.life,0.2), 0, 6.3); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // 로켓
+    if (!(S.over && S.particles.length > 12)){
+      drawRocket(S.x, S.y);
+    }
+
+    ctx.restore();
+  }
+
+  function drawRocket(x,y){
+    ctx.save(); ctx.translate(x,y);
+    // 동체
+    ctx.fillStyle='#e6ebf7';
+    ctx.beginPath();
+    ctx.moveTo(0,-30); ctx.quadraticCurveTo(9,-16,9,2);
+    ctx.lineTo(9,22); ctx.lineTo(-9,22); ctx.lineTo(-9,2);
+    ctx.quadraticCurveTo(-9,-16,0,-30); ctx.closePath(); ctx.fill();
+    // 창
+    ctx.fillStyle='#4fc3f7';
+    ctx.beginPath(); ctx.arc(0,-8,4.2,0,6.3); ctx.fill();
+    // 다리
+    ctx.strokeStyle='#9aa6c4'; ctx.lineWidth=2.6; ctx.lineCap='round';
+    ctx.beginPath();
+    ctx.moveTo(-8,18); ctx.lineTo(-14,30);
+    ctx.moveTo(8,18);  ctx.lineTo(14,30);
+    ctx.stroke();
+    // 하단 링
+    ctx.fillStyle='#8b96b5'; ctx.fillRect(-9,21,18,4);
+    ctx.restore();
+  }
+
+  /* ---------- HUD ---------- */
+  function updateHUD(){
+    var L = LEVELS[lv];
+    var v = Math.round(S.vy*10);
+    var e = document.getElementById('spd');
+    e.textContent = v;
+    e.className = 'v' + (v >= Math.round(L.safe*10) ? ' bad' : (v >= Math.round(L.safe*10)-6 ? ' warn' : ''));
+
+    var f = Math.round(S.fuel);
+    var fe = document.getElementById('fuel');
+    fe.textContent = f;
+    fe.className = 'v' + (f <= 0 ? ' bad' : (f < L.fuel*0.3 ? ' warn' : ''));
+    document.getElementById('fbar').style.width = Math.max(0,(S.fuel/L.fuel)*100) + '%';
+
+    document.getElementById('wind').textContent =
+      S.wind === 0 ? '없음' : (S.wind < 0 ? '← ' + (Math.abs(S.wind)>0.3?'강':'약') : (Math.abs(S.wind)>0.3?'강':'약') + ' →');
+  }
+
+  /* ---------- 입력 ---------- */
+  function press(el, on, off){
+    el.addEventListener('pointerdown', function(ev){ ev.preventDefault(); on(); });
+    ['pointerup','pointerleave','pointercancel'].forEach(function(t){
+      el.addEventListener(t, function(){ off(); });
+    });
+  }
+
+  var tbtn = document.getElementById('tbtn');
+  press(tbtn, function(){ S.thrusting = true; }, function(){ S.thrusting = false; });
+  press(document.getElementById('lbtn'), function(){ S.btnDir = -1; }, function(){ S.btnDir = 0; });
+  press(document.getElementById('rbtn'), function(){ S.btnDir =  1; }, function(){ S.btnDir = 0; });
+
+  document.addEventListener('keydown', function(e){
+    if (e.code==='ArrowLeft')  S.keyDir = -1;
+    if (e.code==='ArrowRight') S.keyDir =  1;
+    if (e.code==='Space'){ e.preventDefault(); S.thrusting = true; }
+    if (e.code==='Enter' && !S.running) start();
+  });
+  document.addEventListener('keyup', function(e){
+    if (e.code==='ArrowLeft' || e.code==='ArrowRight') S.keyDir = 0;
+    if (e.code==='Space') S.thrusting = false;
+  });
+
+  // 캔버스 드래그 조종
+  cv.addEventListener('pointerdown', function(e){
+    var r = cv.getBoundingClientRect();
+    S.dragX = (e.clientX - r.left) * (W / r.width);
+  });
+  cv.addEventListener('pointermove', function(e){
+    if (S.dragX === null) return;
+    var r = cv.getBoundingClientRect();
+    S.dragX = (e.clientX - r.left) * (W / r.width);
+  });
+  ['pointerup','pointerleave','pointercancel'].forEach(function(t){
+    cv.addEventListener(t, function(){ S.dragX = null; });
+  });
+
+  document.getElementById('startBtn').addEventListener('click', start);
+
+  // 난이도
+  Array.prototype.forEach.call(document.querySelectorAll('.chip'), function(c){
+    c.addEventListener('click', function(){
+      document.querySelectorAll('.chip').forEach(function(x){ x.classList.remove('on'); });
+      c.classList.add('on');
+      lv = parseInt(c.dataset.lv,10);
+      if (!S.running){ reset(); draw(); }
+    });
+  });
+
+  /* ---------- 기울기 센서 + 진단 ---------- */
+  var tiltOn = false, oCount = 0, mCount = 0, activeSrc = 'none';
+  var $ = function(id){ return document.getElementById(id); };
+  function mark(el, ok, text){ el.className = ok===null?'mid':(ok?'yes':'no'); el.textContent = text; }
+
+  var inFrame = false;
+  try { inFrame = (window.self !== window.top); } catch(e){ inFrame = true; }
+
+  // 정적 진단
+  mark($('d-sec'), !!window.isSecureContext, window.isSecureContext ? 'OK' : '아니오');
+  mark($('d-frame'), !inFrame, inFrame ? '예 (제한 가능)' : '아니오');
+  mark($('d-doe'), typeof DeviceOrientationEvent !== 'undefined',
+       typeof DeviceOrientationEvent !== 'undefined' ? '지원' : '미지원');
+  var needPerm = (typeof DeviceOrientationEvent !== 'undefined' &&
+                  typeof DeviceOrientationEvent.requestPermission === 'function');
+  mark($('d-perm'), null, needPerm ? '필요 (iOS)' : '불필요');
+
+  // 권한 정책(Permissions Policy) 확인
+  var policyOK = null;
+  try {
+    var fp = document.featurePolicy || document.permissionsPolicy;
+    if (fp && typeof fp.allowsFeature === 'function'){
+      policyOK = fp.allowsFeature('gyroscope') && fp.allowsFeature('accelerometer');
+      mark($('d-policy'), policyOK, policyOK ? '허용' : '차단됨');
+    } else {
+      mark($('d-policy'), null, '확인 불가');
+    }
+  } catch(e){ mark($('d-policy'), null, '확인 불가'); }
+
+  function engage(src){
+    if (tiltOn) return;
+    tiltOn = true; activeSrc = src;
+    $('ctrls').classList.add('tiltmode');
+    $('lbtn').classList.add('off');
+    $('rbtn').classList.add('off');
+    $('smsg').textContent = '기울기 센서 작동 중';
+    $('tiltBtn').style.display = 'none';
+    mark($('d-src'), true, src);
+    $('d-verdict').innerHTML = '✅ <b>센서가 작동합니다.</b> 기기를 좌우로 기울여 조종하세요.';
+  }
+
+  function setTilt(g){
+    if (g > 40) g = 40; if (g < -40) g = -40;
+    S.tilt = g;
+  }
+
+  function onOrient(e){
+    var g = e.gamma, b = e.beta;
+    oCount++;
+    $('d-cnt').textContent = oCount + '회';
+    if (g === null || g === undefined) return;
+    $('d-val').textContent = g.toFixed(1) + ' / ' + (b===null?'—':b.toFixed(1));
+    engage('deviceorientation');
+    setTilt(g);
+  }
+
+  // 대체 경로: devicemotion의 중력 성분으로 좌우 기울기 추정
+  function onMotion(e){
+    mCount++;
+    $('d-mcnt').textContent = mCount + '회';
+    var a = e.accelerationIncludingGravity;
+    if (!a || a.x === null || a.x === undefined) return;
+    if (activeSrc === 'deviceorientation') return;
+    var deg = Math.max(-40, Math.min(40, -a.x * 4.5));
+    $('d-val').textContent = deg.toFixed(1) + ' / (motion)';
+    engage('devicemotion');
+    setTilt(deg);
+  }
+
+  function attach(){
+    window.addEventListener('deviceorientation', onOrient);
+    window.addEventListener('deviceorientationabsolute', onOrient);
+    window.addEventListener('devicemotion', onMotion);
+  }
+
+  function diagnose(){
+    if (tiltOn) return;
+    var v = $('d-verdict'), html;
+    if (!window.isSecureContext){
+      html = '❌ <b>보안 연결(HTTPS)이 아니에요.</b> 기울기 센서는 https 주소에서만 작동합니다.';
+    } else if (policyOK === false || (inFrame && oCount === 0 && mCount === 0)){
+      html = '🚫 <b>이 페이지에서는 기울기 센서를 쓸 수 없습니다.</b><br>' +
+             'iframe 권한 정책(Permissions Policy)에 막혀 있어서, 권한을 허용해도 ' +
+             '브라우저가 센서 값을 전달하지 않아요. 페이지 코드로는 해결이 불가능합니다.<br><br>' +
+             '<b>해결 방법</b> · 이 HTML 파일을 GitHub Pages 같은 곳에 직접 올려서 ' +
+             '최상위 주소로 열면 센서가 정상 작동해요.<br><br>' +
+             '지금은 <b>화면을 좌우로 드래그</b>해서 그대로 플레이하시면 됩니다.';
+      $('tiltBtn').style.display = 'none';
+      $('retryBtn').style.display = 'none';
+      $('openBtn').style.display = 'none';
+      $('smsg').textContent = '';
+    } else if (oCount === 0 && mCount === 0){
+      html = '⚠️ <b>센서 신호가 전혀 오지 않습니다.</b><br>' +
+             '· 기기 설정에서 <b>화면 자동 회전</b>을 켜 보세요<br>' +
+             '· 브라우저 사이트 설정의 <b>모션 센서</b> 권한을 확인해 주세요<br>' +
+             '· 그래도 안 되면 버튼·드래그로 그대로 플레이할 수 있어요';
+    } else {
+      html = '⚠️ 이벤트는 오지만 기울기 값이 비어 있습니다. 다른 브라우저(크롬/사파리)로 열어 보세요.';
+    }
+    v.innerHTML = html;
+  }
+
+  function tryEnable(fromGesture){
+    var msg = $('smsg');
+    if (typeof DeviceOrientationEvent === 'undefined'){
+      msg.textContent = '이 브라우저는 기울기 센서를 지원하지 않아요.';
+      diagnose(); return;
+    }
+    if (needPerm && fromGesture){
+      DeviceOrientationEvent.requestPermission().then(function(res){
+        mark($('d-perm'), res==='granted', res);
+        if (res === 'granted'){
+          if (typeof DeviceMotionEvent !== 'undefined' &&
+              typeof DeviceMotionEvent.requestPermission === 'function'){
+            DeviceMotionEvent.requestPermission().catch(function(){});
+          }
+          attach();
+          msg.textContent = '기기를 좌우로 기울여 보세요.';
+          setTimeout(diagnose, 1600);
+        } else {
+          msg.textContent = '센서 권한이 거부됐어요. 버튼·드래그로 플레이할 수 있어요.';
+          $('d-verdict').innerHTML = '❌ <b>권한이 거부되었습니다.</b> 사파리 설정 → 동작 및 방향 접근을 허용한 뒤 다시 시도해 주세요.';
+        }
+      }).catch(function(err){
+        msg.textContent = '센서를 켤 수 없어요.';
+        $('d-verdict').innerHTML = '❌ 권한 요청 실패: ' + (err && err.message ? err.message : '알 수 없음');
+      });
+    } else {
+      attach();
+      msg.textContent = '기기를 좌우로 기울여 보세요.';
+      setTimeout(diagnose, 1600);
+    }
+  }
+
+  $('tiltBtn').addEventListener('click', function(){ tryEnable(true); });
+  $('retryBtn').addEventListener('click', function(){ oCount=0; mCount=0; tryEnable(true); });
+  $('openBtn').addEventListener('click', function(){
+    window.open(location.href, '_blank', 'noopener');
+  });
+
+  // 시작 버튼도 사용자 제스처이므로 여기서도 한 번 시도
+  $('startBtn').addEventListener('click', function(){ if (!tiltOn) tryEnable(true); });
+
+  // 권한이 필요 없는 환경(안드로이드/데스크톱)에서는 즉시 연결
+  if (!needPerm){ attach(); setTimeout(diagnose, 2200); }
+
+  reset();
+  requestAnimationFrame(step);
+})();
+</script>
+</body>
+</html>
