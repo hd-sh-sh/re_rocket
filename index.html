@@ -209,8 +209,21 @@
 </div>
 
 <script>
+/* ============================================================
+   ✏️ 여기만 수정하세요! 내 로켓 이미지 주소를 따옴표 안에 붙여넣기
+   ============================================================ */
+var ROCKET_IMG = "https://raw.githubusercontent.com/hd-sh-sh/rocket_202611/main/rocket00.png";
+/* ============================================================ */
+
 (function(){
   "use strict";
+
+  /* ---------- 로켓 이미지 불러오기 (실패하면 기본 로켓으로 그림) ---------- */
+  var rocketImg = new Image();
+  var rocketReady = false;
+  rocketImg.onload = function(){ rocketReady = true; };
+  rocketImg.onerror = function(){ rocketReady = false; };
+  if (ROCKET_IMG) rocketImg.src = ROCKET_IMG.trim();
 
   var cv = document.getElementById('cv');
   var ctx = cv.getContext('2d');
@@ -437,6 +450,14 @@
   }
 
   function drawRocket(x,y){
+    // 학생 이미지: 비율을 유지한 채 가로 44 × 세로 70 칸 안에 맞추고, 바닥을 착지 지점에 맞춤
+    if (rocketReady && rocketImg.naturalWidth > 0){
+      var maxW = 44, maxH = 70;
+      var sc = Math.min(maxW / rocketImg.naturalWidth, maxH / rocketImg.naturalHeight);
+      var w = rocketImg.naturalWidth * sc, h = rocketImg.naturalHeight * sc;
+      ctx.drawImage(rocketImg, x - w/2, y + 30 - h, w, h);
+      return;
+    }
     ctx.save(); ctx.translate(x,y);
     // 동체
     ctx.fillStyle='#e6ebf7';
